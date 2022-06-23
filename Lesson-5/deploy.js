@@ -1,22 +1,31 @@
 //http://127.0.0.1:7545
-const ethers = require("ethers");
-const fs = require("fs");
+const ethers = require("ethers")
+const fs = require("fs")
+require("dotenv").config()
 
 async function main() {
-    //connection to the blockchain 
-    const provider = new ethers.providers.JsonRpcProvider("http://172.31.224.1:7545"); //connection with ganache
-    const wallet = new ethers.Wallet("36c720e13cee32ad6673c6a0e5fc52c44c16a2255e90e512d3ecfbcc67e1c6d8", provider); //private key of an account the ganache account
-    const abi = fs.readFileSync("./SimpleStorage_sol_SimpleStorage.abi", "utf8"); // sync because we have to wait for that file to update
-    const binary = fs.readFileSync("./SimpleStorage_sol_SimpleStorage.bin", "utf8");
-    const nonce = await wallet.getTransactionCount();
+    //connection to the blockchain
+    const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL) //connection with ganache
+    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider) //private key of an account the ganache account
+        // const encryptedJson = fs.readFileSync("./encryptedKey.json", "utf8"); // read from json and save it in that variable
+        // let wallet = new ethers.Wallet.fromEncryptedJsonSync(encryptedJson, process.env.PRIVATE_KEY_PASSWORD) //create a wallet from that ecrypted key
+        // wallet = await wallet.connect(provider);
+    const abi = fs.readFileSync("./SimpleStorage_sol_SimpleStorage.abi", "utf8") // sync because we have to wait for that file to update
+    const binary = fs.readFileSync(
+        "./SimpleStorage_sol_SimpleStorage.bin",
+        "utf8"
+    )
+    const nonce = await wallet.getTransactionCount()
 
-    //in ethers, a CONTRACT FACTORY is just an object that you can use to deploy contracts 
-    const contractFactory = new ethers.ContractFactory(abi, binary, wallet);
-    console.log("Deploying, please wait .....");
-    const contract = await contractFactory.deploy(); // wait for the contract to deploy
-    //console.log(contract);
-    const transactionReceipt = await contract.deployTransaction.wait(1); //wait one bloc for confirmation that the contract is added to the chain
+    //in ethers, a CONTRACT FACTORY is just an object that you can use to deploy contracts
+    const contractFactory = new ethers.ContractFactory(abi, binary, wallet)
+    console.log("Deploying, please wait .....")
+    const contract = await contractFactory.deploy() // wait for the contract to deploy
+        //console.log(contract);
+    console.log(`Contract address: ${contract.address}`);
+    await contract.deployTransaction.wait(1)
 
+    //const transactionReceipt = await contract.deployTransaction.wait(1); //wait one bloc for confirmation that the contract is added to the chain
     // console.log(" Here is the deployment transaction: "); //transaction response is something you get initially
     // console.log(contract.deployTransaction);
     // console.log(" Here is the transaction receipt: ");
@@ -24,7 +33,7 @@ async function main() {
 
     //     console.log("Let's deploy with only transaction data: ");
     //     const tx = {
-    //         nonce: nonce,
+    //          nonce: nonce,
     //         gasPrice: 20000000000,
     //         gasLimit: 1000000,
     //         to: null,
@@ -40,16 +49,22 @@ async function main() {
     //     const sentTxResponse = await wallet.sendTransaction(tx);
     //     await sentTxResponse.wait(1);
     //     console.log(sentTxResponse);
-    // 
+    //
 
-    const currentFavNum = await contract.retrieve();
-    console.log(currentFavNum);
+    //Printing the number
+    const currentFavNum = await contract.retrieve()
+    console.log(`Current Fav Number: ${currentFavNum.toString()}`)
+
+    //Storing the number
+    const transactionResponse = await contract.store("7")
+    const transactionReceiptForStore = await transactionResponse.wait(1)
+    const updatedFavNum = await contract.retrieve()
+    console.log(`Fav Number is: ${updatedFavNum}`)
 }
-
 
 main()
     .then(() => process.exit(0))
     .catch((error) => {
-        console.error(error);
-        process.exit(1);
-    });
+        console.error(error)
+        process.exit(1)
+    })
